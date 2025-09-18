@@ -9,7 +9,7 @@ import { sepolia } from "thirdweb/chains";
 import {
   useActiveAccount,
   useReadContract,
-  useSendTransaction,
+  TransactionButton,
 } from "thirdweb/react";
 import { Loader2, DollarSign, Calendar, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -59,12 +59,10 @@ interface NFTWithMetadata extends NFTData {
 
 // Rent NFT Card Component
 const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
-  const { mutate: sendTransaction } = useSendTransaction();
   const account = useActiveAccount();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageSrc, setImageSrc] = useState(nft.metadata?.image || "");
-  const [isTransacting, setIsTransacting] = useState(false);
 
   // Dialog states
   const [rentDialogOpen, setRentDialogOpen] = useState(false);
@@ -76,16 +74,13 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     address: contractAddress,
   });
 
-  const formatEther = (etherOrWei: bigint): string => {
-    // Check if the value is likely in wei (very large number) or ether (small number)
-    const num = Number(etherOrWei);
-    if (num > 1000000) {
-      // Likely in wei, convert to ether
-      return (num / 1e18).toFixed(4);
-    } else {
-      // Likely already in ether
-      return num.toFixed(4);
-    }
+  const formatWei = (weiValue: bigint): string => {
+    // Contract comment says "priceInEther; // actually stored in wei"
+    // Format wei for better readability
+    const weiString = weiValue.toString();
+
+    // Add commas for better readability
+    return weiString.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
   const formatDuration = (hours: bigint): string => {
@@ -116,79 +111,11 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     setRentDialogOpen(false);
   };
 
-  const handleRentNFT = () => {
-    if (!rentDays || isNaN(parseInt(rentDays)) || parseInt(rentDays) <= 0) {
-      toast.error("Please enter a valid rental duration");
-      return;
-    }
-
-    const days = parseInt(rentDays);
-    const minDays = Number(nft.minRentDuration) / 24;
-    const maxDays = Number(nft.maxRentDuration) / 24;
-
-    if (days < minDays || days > maxDays) {
-      toast.error(
-        `Rental duration must be between ${minDays} and ${maxDays} days`
-      );
-      return;
-    }
-
-    setIsTransacting(true);
-    toast.loading("Preparing rental...", { id: "rent-nft" });
-
-    const durationInHours = BigInt(days * 24);
-
-    // Contract logic: uint256 totalPriceInEther = (l.priceInEther * durationInHours) / 24;
-    // require(msg.value >= totalPriceInEther * 1 ether, "Insufficient ETH");
-    //
-    // Since contract multiplies by 1 ether, priceInEther must be in ether units
-    // Calculate: (priceInEther * durationInHours) / 24 * 1 ether
-    const totalPriceInEther = (nft.priceInEther * durationInHours) / BigInt(24);
-    const totalCostInWei = totalPriceInEther * BigInt(1e18);
-
-    console.log("NFT Price per day:", nft.priceInEther.toString());
-    console.log("Duration in hours:", durationInHours.toString());
-    console.log("Total price in ether:", totalPriceInEther.toString());
-    console.log("Total cost in wei:", totalCostInWei.toString());
-    try {
-      const transaction = prepareContractCall({
-        contract,
-        method: "function rentNFT(uint256 tokenId, uint256 durationInHours)",
-        params: [nft.tokenId, durationInHours],
-        value: totalCostInWei,
-      });
-
-      sendTransaction(transaction, {
-        onSuccess: (receipt) => {
-          console.log("✅ Rental successful:", receipt);
-          toast.success("🎉 NFT rented successfully!", { id: "rent-nft" });
-          resetRentForm();
-          setIsTransacting(false);
-        },
-        onError: (error) => {
-          console.error("❌ Rental error:", error);
-          toast.error(`❌ Rental failed: ${error.message}`, { id: "rent-nft" });
-          setIsTransacting(false);
-        },
-      });
-    } catch (error) {
-      console.error("🚨 Error preparing rental:", error);
-      toast.error(
-        `Failed to prepare transaction: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-        { id: "rent-nft" }
-      );
-      setIsTransacting(false);
-    }
-  };
-
   const isOwner = account?.address?.toLowerCase() === nft.seller.toLowerCase();
   const minDays = Number(nft.minRentDuration) / 24;
   const maxDays = Number(nft.maxRentDuration) / 24;
   const totalCost = rentDays
-    ? ((nft.priceInEther * BigInt(parseInt(rentDays) * 24)) / BigInt(24)) *
-      BigInt(1e18) // Same calculation as transaction
+    ? (nft.priceInEther * BigInt(parseInt(rentDays) * 24)) / BigInt(24)
     : BigInt(0);
 
   return (
@@ -265,7 +192,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
             <div className="flex items-center gap-1">
               <DollarSign className="w-4 h-4 text-muted-foreground" />
               <span className="text-lg font-bold text-foreground">
-                {formatEther(nft.priceInEther)} ETH
+                {formatWei(nft.priceInEther)} WEI
               </span>
             </div>
           </div>
@@ -320,7 +247,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
             <Button
               className="w-full"
               onClick={() => setRentDialogOpen(true)}
-              disabled={isTransacting || !account}
+              disabled={!account}
             >
               <Calendar className="mr-2 h-4 w-4" />
               Rent NFT
@@ -353,7 +280,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
                 value={rentDays}
                 onChange={(e) => setRentDays(e.target.value)}
                 className="col-span-3"
-                disabled={isTransacting}
+                disabled={rentDays && parseInt(rentDays) > 0 ? false : true}
               />
             </div>
             {rentDays && !isNaN(parseInt(rentDays)) && (
@@ -363,41 +290,67 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
                     Total Cost:
                   </span>
                   <span className="font-semibold">
-                    {formatEther(totalCost)} ETH
+                    {formatWei(totalCost)} WEI
                   </span>
                 </div>
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-xs text-muted-foreground">
-                    {rentDays} days × {formatEther(nft.priceInEther)} ETH/day
+                    {rentDays} days × {formatWei(nft.priceInEther)} WEI/day
                   </span>
                 </div>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={resetRentForm}
-              disabled={isTransacting}
-            >
+            <Button variant="outline" onClick={resetRentForm}>
               Cancel
             </Button>
-            <Button
-              onClick={handleRentNFT}
-              disabled={isTransacting || !rentDays}
+
+            <TransactionButton
+              transaction={() => {
+                if (
+                  !rentDays ||
+                  isNaN(parseInt(rentDays)) ||
+                  parseInt(rentDays) <= 0
+                ) {
+                  throw new Error("Please enter a valid rental duration");
+                }
+
+                const days = parseInt(rentDays);
+                const minDays = Number(nft.minRentDuration) / 24;
+                const maxDays = Number(nft.maxRentDuration) / 24;
+
+                if (days < minDays || days > maxDays) {
+                  throw new Error(
+                    `Rental duration must be between ${minDays} and ${maxDays} days`
+                  );
+                }
+
+                const durationInHours = BigInt(days * 24);
+                // Since priceInEther is now stored in wei, we calculate directly
+                const totalCostInWei =
+                  (nft.priceInEther * durationInHours) / BigInt(24);
+
+                return prepareContractCall({
+                  contract,
+                  method:
+                    "function rentNFT(uint256 tokenId, uint256 durationInHours)",
+                  params: [nft.tokenId, durationInHours],
+                  value: totalCostInWei,
+                });
+              }}
+              onTransactionConfirmed={() => {
+                toast.success("🎉 NFT rented successfully!");
+                resetRentForm();
+              }}
+              onError={(error) => {
+                toast.error(`❌ Rental failed: ${error.message}`);
+              }}
+              disabled={!rentDays}
             >
-              {isTransacting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Renting...
-                </>
-              ) : (
-                <>
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Rent for {formatEther(totalCost)} ETH
-                </>
-              )}
-            </Button>
+              <Calendar className="mr-2 h-4 w-4" />
+              Rent for {formatWei(totalCost)} WEI
+            </TransactionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -360,7 +360,9 @@ export default function InfiniteHero() {
               </div>
             </div>
             <div className="space-y-1">
-              <div className="text-2xl font-bold text-foreground">50 ETH</div>
+              <div className="text-2xl font-bold text-foreground">
+                50,000,000,000,000,000,000 WEI
+              </div>
               <div className="text-xs text-muted-foreground tracking-wide">
                 Volume Traded
               </div>

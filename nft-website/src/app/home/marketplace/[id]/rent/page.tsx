@@ -46,11 +46,11 @@ export default function ConfirmRental() {
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Price per day</span>
-          <span className="text-foreground">0.5 ETH</span>
+          <span className="text-foreground">500,000,000,000,000,000 WEI</span>
         </div>
         <div className="flex justify-between text-sm font-semibold text-primary">
           <span>Total Cost</span>
-          <span>3.5 ETH</span>
+          <span>3,500,000,000,000,000,000 WEI</span>
         </div>
       </div>
 
@@ -59,8 +59,8 @@ export default function ConfirmRental() {
         <div className="flex justify-between items-center">
           <span className="text-sm text-muted-foreground">Payment Method</span>
           <div className="flex items-center gap-2">
-            <Image src="/eth_logo.png" alt="Ethereum" width={18} height={18} />
-            <span className="text-sm text-foreground">Ethereum</span>
+            <Image src="/eth_logo.png" alt="WEI" width={18} height={18} />
+            <span className="text-sm text-foreground">WEI</span>
           </div>
         </div>
       </div>

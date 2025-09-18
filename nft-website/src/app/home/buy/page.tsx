@@ -9,7 +9,7 @@ import { sepolia } from "thirdweb/chains";
 import {
   useActiveAccount,
   useReadContract,
-  useSendTransaction,
+  TransactionButton,
 } from "thirdweb/react";
 import { Loader2, DollarSign, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -57,12 +57,10 @@ interface NFTWithMetadata extends NFTData {
 
 // Buy NFT Card Component
 const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
-  const { mutate: sendTransaction } = useSendTransaction();
   const account = useActiveAccount();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageSrc, setImageSrc] = useState(nft.metadata?.image || "");
-  const [isTransacting, setIsTransacting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const contract = getContract({
@@ -71,16 +69,13 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     address: contractAddress,
   });
 
-  const formatEther = (etherOrWei: bigint): string => {
-    // Check if the value is likely in wei (very large number) or ether (small number)
-    const num = Number(etherOrWei);
-    if (num > 1000000) {
-      // Likely in wei, convert to ether
-      return (num / 1e18).toFixed(4);
-    } else {
-      // Likely already in ether
-      return num.toFixed(4);
-    }
+  const formatWei = (weiValue: bigint): string => {
+    // Contract comment says "priceInEther; // actually stored in wei"
+    // Format wei for better readability
+    const weiString = weiValue.toString();
+
+    // Add commas for better readability
+    return weiString.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
   const handleImageError = () => {
@@ -113,54 +108,6 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     }
 
     setShowConfirmDialog(true);
-  };
-
-  const handleConfirmBuy = () => {
-    setShowConfirmDialog(false);
-    setIsTransacting(true);
-    toast.loading("Preparing purchase...", { id: "buy-nft" });
-
-    try {
-      // Contract logic: require(msg.value >= l.priceInEther * 1 ether, "Insufficient ETH");
-      // Since the contract multiplies priceInEther by 1 ether,
-      // priceInEther must be stored as ether units (like 1 = 1 ETH)
-      // But thirdweb might return it as wei, so we need to multiply by 1 ether
-      const valueToSend = nft.priceInEther * BigInt(1e18);
-
-      console.log("NFT Price:", nft.priceInEther.toString());
-      console.log("Value to send:", valueToSend.toString());
-
-      const transaction = prepareContractCall({
-        contract,
-        method: "function buyNFT(uint256 tokenId)",
-        params: [nft.tokenId],
-        value: valueToSend,
-      });
-
-      sendTransaction(transaction, {
-        onSuccess: (receipt) => {
-          console.log("✅ Purchase successful:", receipt);
-          toast.success("🎉 NFT purchased successfully!", { id: "buy-nft" });
-          setIsTransacting(false);
-        },
-        onError: (error) => {
-          console.error("❌ Purchase error:", error);
-          toast.error(`❌ Purchase failed: ${error.message}`, {
-            id: "buy-nft",
-          });
-          setIsTransacting(false);
-        },
-      });
-    } catch (error) {
-      console.error("🚨 Error preparing purchase:", error);
-      toast.error(
-        `Failed to prepare transaction: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-        { id: "buy-nft" }
-      );
-      setIsTransacting(false);
-    }
   };
 
   const isOwner = account?.address?.toLowerCase() === nft.seller.toLowerCase();
@@ -238,7 +185,7 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
           <div className="flex items-center gap-1">
             <DollarSign className="w-4 h-4 text-muted-foreground" />
             <span className="text-lg font-bold text-foreground">
-              {formatEther(nft.priceInEther)} ETH
+              {formatWei(nft.priceInEther)} WEI
             </span>
           </div>
         </div>
@@ -282,19 +229,10 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
               <Button
                 className="w-full"
                 onClick={handleBuyClick}
-                disabled={isTransacting || !account}
+                disabled={!account}
               >
-                {isTransacting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Purchasing...
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="mr-2 h-4 w-4" />
-                    Buy for {formatEther(nft.priceInEther)} ETH
-                  </>
-                )}
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Buy for {formatWei(nft.priceInEther)} WEI
               </Button>
 
               {/* Confirmation Dialog */}
@@ -345,7 +283,7 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
                           Price:
                         </span>
                         <span className="font-medium">
-                          {formatEther(nft.priceInEther)} ETH
+                          {formatWei(nft.priceInEther)} WEI
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -368,20 +306,30 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
                     <Button
                       variant="outline"
                       onClick={() => setShowConfirmDialog(false)}
-                      disabled={isTransacting}
                     >
                       Cancel
                     </Button>
-                    <Button onClick={handleConfirmBuy} disabled={isTransacting}>
-                      {isTransacting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Purchasing...
-                        </>
-                      ) : (
-                        <>Confirm Purchase</>
-                      )}
-                    </Button>
+
+                    <TransactionButton
+                      transaction={() => {
+                        // Since priceInEther is now stored in wei, we send it directly
+                        return prepareContractCall({
+                          contract,
+                          method: "function buyNFT(uint256 tokenId)",
+                          params: [nft.tokenId],
+                          value: nft.priceInEther, // Already in wei
+                        });
+                      }}
+                      onTransactionConfirmed={() => {
+                        toast.success("🎉 NFT purchased successfully!");
+                        setShowConfirmDialog(false);
+                      }}
+                      onError={(error) => {
+                        toast.error(`❌ Purchase failed: ${error.message}`);
+                      }}
+                    >
+                      Confirm Purchase
+                    </TransactionButton>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

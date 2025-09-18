@@ -93,8 +93,12 @@ const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     address: contractAddress,
   });
 
-  const formatEther = (wei: bigint): string => {
-    return (Number(wei) / 1e18).toFixed(4);
+  const formatWei = (wei: bigint): string => {
+    // Format wei for better readability
+    const weiString = wei.toString();
+
+    // Add commas for better readability
+    return weiString.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
   const handleImageError = () => {
@@ -140,7 +144,8 @@ const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     setIsTransacting(true);
     toast.loading("Preparing transaction...", { id: "list-sale" });
 
-    const priceInWei = BigInt(Math.floor(parseFloat(salePrice) * 1e18));
+    // Since we're working in wei, use the input value directly
+    const priceInWei = BigInt(salePrice);
 
     try {
       const transaction = prepareContractCall({
@@ -204,7 +209,8 @@ const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     setIsTransacting(true);
     toast.loading("Preparing transaction...", { id: "list-rent" });
 
-    const pricePerDayInWei = BigInt(Math.floor(parseFloat(rentPrice) * 1e18));
+    // Since we're working in wei, use the input value directly
+    const pricePerDayInWei = BigInt(rentPrice);
     const minDurationInHours = BigInt(parseInt(minDays) * 24);
     const maxDurationInHours = BigInt(parseInt(maxDays) * 24);
 
@@ -368,7 +374,7 @@ const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
               <div className="flex items-center gap-1">
                 <DollarSign className="w-3 h-3 text-muted-foreground" />
                 <span className="text-sm font-medium">
-                  {formatEther(nft.priceInEther)} ETH
+                  {formatWei(nft.priceInEther)} WEI
                 </span>
               </div>
             </div>
@@ -429,14 +435,14 @@ const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="salePrice" className="text-right">
-                Price (ETH)
+                Price (WEI)
               </Label>
               <Input
                 id="salePrice"
                 type="number"
-                step="0.001"
-                min="0"
-                placeholder="0.1"
+                step="1"
+                min="1"
+                placeholder="100"
                 value={salePrice}
                 onChange={(e) => setSalePrice(e.target.value)}
                 className="col-span-3"
@@ -482,14 +488,14 @@ const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="rentPrice" className="text-right">
-                Price/Day (ETH)
+                Price/Day (WEI)
               </Label>
               <Input
                 id="rentPrice"
                 type="number"
-                step="0.001"
-                min="0"
-                placeholder="0.01"
+                step="1"
+                min="1"
+                placeholder="50"
                 value={rentPrice}
                 onChange={(e) => setRentPrice(e.target.value)}
                 className="col-span-3"

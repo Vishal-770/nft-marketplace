@@ -125,8 +125,12 @@ const NFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageSrc, setImageSrc] = useState(nft.metadata?.image || "");
 
-  const formatEther = (wei: bigint): string => {
-    return (Number(wei) / 1e18).toFixed(4);
+  const formatWei = (wei: bigint): string => {
+    // Format wei for better readability
+    const weiString = wei.toString();
+
+    // Add commas for better readability
+    return weiString.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
   const formatAddress = (address: string): string => {
@@ -257,7 +261,7 @@ const NFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
               <DollarSign className="w-3 h-3 text-muted-foreground" />
               <span className="text-sm font-medium">
                 {nft.priceInEther > 0
-                  ? `${formatEther(nft.priceInEther)} ETH`
+                  ? `${formatWei(nft.priceInEther)} WEI`
                   : "Not for sale"}
               </span>
             </div>

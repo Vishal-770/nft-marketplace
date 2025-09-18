@@ -8,37 +8,37 @@ const nfts = [
   {
     id: 1,
     name: "CryptoPunk #7804",
-    price: "0.5 ETH / day",
+    price: "500,000,000,000,000,000 WEI / day",
     image: "https://cryptopunks.app/cryptopunks/7804.png",
   },
   {
     id: 2,
     name: "Bored Ape #3456",
-    price: "0.8 ETH / day",
+    price: "800,000,000,000,000,000 WEI / day",
     image: "https://boredapeyachtclub.com/api/members/3456.png",
   },
   {
     id: 3,
     name: "Azuki #1234",
-    price: "0.3 ETH / day",
+    price: "300,000,000,000,000,000 WEI / day",
     image: "https://azuki.com/images/azuki-1234.png",
   },
   {
     id: 4,
     name: "Moonbirds #5678",
-    price: "0.6 ETH / day",
+    price: "600,000,000,000,000,000 WEI / day",
     image: "https://moonbirds.xyz/api/5678.png",
   },
   {
     id: 5,
     name: "Doodles #9012",
-    price: "0.4 ETH / day",
+    price: "400,000,000,000,000,000 WEI / day",
     image: "https://doodles.app/api/9012.png",
   },
   {
     id: 6,
     name: "CloneX #3456",
-    price: "0.7 ETH / day",
+    price: "700,000,000,000,000,000 WEI / day",
     image: "https://clonex.rtfkt.com/3456.png",
   },
 ];
