@@ -1,5 +1,9 @@
 import { NFTCreationForm } from "./components/NFTCreationForm";
 
 export default function CreatePage() {
-  return <NFTCreationForm />;
+  return (
+    <div className="mb-10">
+      <NFTCreationForm />
+    </div>
+  );
 }
