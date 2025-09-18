@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "next": "15.5.3",
+    "pinata": "^2.5.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-hook-form": "^7.62.0",
     "thirdweb": "^5.106.0"
   },
   "devDependencies": {
