@@ -122,7 +122,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
         contract,
         method: "function buyNFT(uint256 tokenId) payable",
         params: [nft.tokenId],
-        value: nft.priceInEther,
+        value: nft.priceInEther * BigInt(1e18), // Convert from ether to wei
       });
 
       sendTransaction(transaction, {
@@ -172,14 +172,17 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     setIsTransacting(true);
     toast.loading("Preparing rental...", { id: "rent-nft" });
 
-    const totalCost = nft.priceInEther * BigInt(days);
+    const durationInHours = BigInt(days * 24);
+    // Contract calculates: (priceInEther * durationInHours) / 24 * 1 ether
+    // This simplifies to: priceInEther * days * 1 ether
+    const totalCostInWei = nft.priceInEther * BigInt(days) * BigInt(1e18);
 
     try {
       const transaction = prepareContractCall({
         contract,
         method: "function rentNFT(uint256 tokenId, uint256 durationInHours)",
-        params: [nft.tokenId, BigInt(days * 24)],
-        value: totalCost,
+        params: [nft.tokenId, durationInHours],
+        value: totalCostInWei,
       });
 
       sendTransaction(transaction, {
@@ -211,7 +214,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
   const minDays = Number(nft.minRentDuration) / 24;
   const maxDays = Number(nft.maxRentDuration) / 24;
   const totalCost = rentDays
-    ? nft.priceInEther * BigInt(parseInt(rentDays))
+    ? nft.priceInEther * BigInt(parseInt(rentDays)) // Total cost in ether (for display)
     : BigInt(0);
 
   return (
