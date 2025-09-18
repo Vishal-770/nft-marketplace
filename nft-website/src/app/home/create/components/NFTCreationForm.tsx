@@ -260,7 +260,7 @@ export function NFTCreationForm() {
   return (
     <div className="min-h-screen bg-background">
       {/* Debug info - remove in production */}
-      {process.env.NODE_ENV === "development" && (
+      {/* {process.env.NODE_ENV === "development" && (
         <div className="fixed top-4 left-4 bg-card text-card-foreground p-3 rounded-lg text-xs z-50 border border-border shadow-lg">
           <div className="font-medium mb-1">Debug Panel</div>
           <div>
@@ -284,7 +284,7 @@ export function NFTCreationForm() {
             </span>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -296,9 +296,6 @@ export function NFTCreationForm() {
             >
               ← Back to Home
             </Link>
-            <div className="w-full sm:w-auto">
-              <ConnectButton client={contract.client} />
-            </div>
           </div>
           <div className="text-center max-w-2xl mx-auto">
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">

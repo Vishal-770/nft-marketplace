@@ -1,20 +1,22 @@
+"use client";
 import BottomNav from "@/components/bottomNavBar";
 import { Metadata } from "next";
 import { ModeToggle } from "@/components/ui/animated-theme-toggler";
-import { ConnectButton } from "thirdweb/react";
+import { ConnectButton, darkTheme, lightTheme } from "thirdweb/react";
 import client from "../client";
-export const metadata: Metadata = {
-  title: "Home",
-  description: "Welcome to the NFT Marketplace",
-};
+import { useTheme } from "next-themes";
 
 export default function HomeLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const { theme } = useTheme();
   return (
     <>
       <div className="fixed top-5 right-5 z-50 flex gap-2">
-        <ConnectButton client={client} />
+        <ConnectButton
+          theme={theme == "dark" ? darkTheme() : lightTheme()}
+          client={client}
+        />
 
         <ModeToggle />
       </div>

@@ -30,7 +30,7 @@ export default function BottomNav() {
         onClick={() => handleNav("/home/create", "create")}
       >
         <ImageIcon size={20} />
-        <span className="text-xs">My NFTs</span>
+        <span className="text-xs">Create NFT</span>
       </div>
       <div
         className={`flex flex-col items-center cursor-pointer ${
