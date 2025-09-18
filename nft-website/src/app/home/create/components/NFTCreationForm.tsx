@@ -4,10 +4,7 @@ import { useState, useRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  useSendTransaction,
-  useActiveAccount,
-} from "thirdweb/react";
+import { useSendTransaction, useActiveAccount } from "thirdweb/react";
 import { prepareContractCall } from "thirdweb";
 import { contract } from "@/lib/contract";
 import {
