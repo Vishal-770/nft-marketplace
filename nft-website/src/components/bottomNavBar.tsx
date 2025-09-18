@@ -4,7 +4,7 @@ import { Home, Image as ImageIcon, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function BottomNav() {
-  const [active, setActive] = useState("marketplace");
+  const [active, setActive] = useState("full");
   const router = useRouter();
 
   const handleNav = (route: string, key: string) => {

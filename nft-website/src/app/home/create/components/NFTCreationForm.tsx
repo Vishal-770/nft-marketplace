@@ -137,10 +137,13 @@ export function NFTCreationForm() {
       {/* Header */}
       <div className="border-b overflow-x-hidden border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 dark:bg-background/90">
         <div className="container mx-auto px-4 py-6">
+          <Link
+            href="/home"
+            className="inline-flex mb-8 items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+          >
+            Back to Home
+          </Link>
           <div className="mx-auto">
-            <Link href="/home" >
-              back to home
-            </Link>
             <h1 className="text-3xl font-bold text-foreground">Create NFT</h1>
             <p className="text-muted-foreground mt-2">
               Upload your artwork and create NFT metadata for minting
