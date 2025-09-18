@@ -1,10 +1,12 @@
-import Link from "next/link";
+import InfiniteHero from "@/components/infinite-hero";
 
 export default function Home() {
   return (
     <>
-      <div>Welcome to flexnft</div>
-      <Link href="/home" />
+    <div className="overflow-x-hidden">
+
+      <InfiniteHero />
+    </div>
     </>
   );
 }
