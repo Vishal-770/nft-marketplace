@@ -1,6 +1,18 @@
+"use client";
+import { getContract } from "thirdweb";
 import { NFTCreationForm } from "./components/NFTCreationForm";
+import { contractAddress } from "@/constants";
+import { sepolia } from "thirdweb/chains";
+import client from "../client";
 
 export default function CreatePage() {
+  const contract = getContract({
+    address: contractAddress as string,
+    chain: sepolia,
+    client: client,
+  });
+
+  console.log(contract);
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
