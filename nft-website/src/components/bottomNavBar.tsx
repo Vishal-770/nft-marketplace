@@ -39,7 +39,7 @@ export default function BottomNav() {
         onClick={() => handleNav("/home/profile", "profile")}
       >
         <User size={20} />
-        <span className="text-xs">Profile</span>
+        <span className="text-xs">My Nfts</span>
       </div>
     </div>
   );
