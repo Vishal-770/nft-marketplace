@@ -5,7 +5,6 @@ import { useForm, useFieldArray } from "react-hook-form";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ConnectButton,
   useSendTransaction,
   useActiveAccount,
 } from "thirdweb/react";

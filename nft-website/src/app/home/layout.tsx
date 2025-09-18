@@ -1,6 +1,5 @@
 "use client";
 import BottomNav from "@/components/bottomNavBar";
-import { Metadata } from "next";
 import { ModeToggle } from "@/components/ui/animated-theme-toggler";
 import { ConnectButton, darkTheme, lightTheme } from "thirdweb/react";
 import client from "../client";
