@@ -1,7 +1,10 @@
-import React from "react";
+import Link from "next/link";
 
-const Home = () => {
-  return <div>Hello</div>;
-};
-
-export default Home;
+export default function Home() {
+  return (
+    <>
+      <div>Welcome to flexnft</div>
+      <Link href="/home" />
+    </>
+  );
+}

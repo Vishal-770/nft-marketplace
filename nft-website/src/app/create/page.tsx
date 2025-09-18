@@ -1,34 +1,35 @@
 "use client";
-import { getContract } from "thirdweb";
-import { NFTCreationForm } from "./components/NFTCreationForm";
 import { contractAddress } from "@/constants";
+import { getContract, prepareContractCall } from "thirdweb";
 import { sepolia } from "thirdweb/chains";
+import { ConnectButton, TransactionButton } from "thirdweb/react";
 import client from "../client";
 
-export default function CreatePage() {
+import { toast } from "sonner";
+
+export default function Component() {
   const contract = getContract({
-    address: contractAddress as string,
-    chain: sepolia,
     client: client,
+    address: contractAddress,
+    chain: sepolia,
   });
 
-  console.log(contract);
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Create NFT Metadata
-          </h1>
-          <p className="text-gray-600">
-            Upload your image and create metadata for your NFT
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <NFTCreationForm />
-        </div>
-      </div>
-    </div>
-  );
+    <>
+      <ConnectButton client={client}></ConnectButton>
+      <TransactionButton
+        onTransactionConfirmed={() => toast.success("Created SuccessFully")}
+        onError={() => toast.error("Failed To create")}
+        transaction={() =>
+          prepareContractCall({
+            contract,
+            method: "function mintNFT(string _hash, uint256 royaltyPercent)",
+            params: ["22335hjehuoewfhuewwey232553", BigInt(22)], // ✅ safer
+          })
+        }
+      >
+        Create
+      </TransactionButton>
+    </>
+  ); // ✅ fixed casing
 }
