@@ -76,8 +76,16 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     address: contractAddress,
   });
 
-  const formatEther = (wei: bigint): string => {
-    return (Number(wei) / 1e18).toFixed(4);
+  const formatEther = (etherOrWei: bigint): string => {
+    // Check if the value is likely in wei (very large number) or ether (small number)
+    const num = Number(etherOrWei);
+    if (num > 1000000) {
+      // Likely in wei, convert to ether
+      return (num / 1e18).toFixed(4);
+    } else {
+      // Likely already in ether
+      return num.toFixed(4);
+    }
   };
 
   const formatDuration = (hours: bigint): string => {
@@ -129,10 +137,19 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     toast.loading("Preparing rental...", { id: "rent-nft" });
 
     const durationInHours = BigInt(days * 24);
-    // Contract calculates: (priceInEther * durationInHours) / 24 * 1 ether
-    // This simplifies to: priceInEther * days * 1 ether
-    const totalCostInWei = nft.priceInEther * BigInt(days) * BigInt(1e18);
 
+    // Contract logic: uint256 totalPriceInEther = (l.priceInEther * durationInHours) / 24;
+    // require(msg.value >= totalPriceInEther * 1 ether, "Insufficient ETH");
+    //
+    // Since contract multiplies by 1 ether, priceInEther must be in ether units
+    // Calculate: (priceInEther * durationInHours) / 24 * 1 ether
+    const totalPriceInEther = (nft.priceInEther * durationInHours) / BigInt(24);
+    const totalCostInWei = totalPriceInEther * BigInt(1e18);
+
+    console.log("NFT Price per day:", nft.priceInEther.toString());
+    console.log("Duration in hours:", durationInHours.toString());
+    console.log("Total price in ether:", totalPriceInEther.toString());
+    console.log("Total cost in wei:", totalCostInWei.toString());
     try {
       const transaction = prepareContractCall({
         contract,
@@ -170,7 +187,8 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
   const minDays = Number(nft.minRentDuration) / 24;
   const maxDays = Number(nft.maxRentDuration) / 24;
   const totalCost = rentDays
-    ? nft.priceInEther * BigInt(parseInt(rentDays)) // Total cost in ether (for display)
+    ? ((nft.priceInEther * BigInt(parseInt(rentDays) * 24)) / BigInt(24)) *
+      BigInt(1e18) // Same calculation as transaction
     : BigInt(0);
 
   return (

@@ -71,8 +71,16 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     address: contractAddress,
   });
 
-  const formatEther = (wei: bigint): string => {
-    return (Number(wei) / 1e18).toFixed(4);
+  const formatEther = (etherOrWei: bigint): string => {
+    // Check if the value is likely in wei (very large number) or ether (small number)
+    const num = Number(etherOrWei);
+    if (num > 1000000) {
+      // Likely in wei, convert to ether
+      return (num / 1e18).toFixed(4);
+    } else {
+      // Likely already in ether
+      return num.toFixed(4);
+    }
   };
 
   const handleImageError = () => {
@@ -113,11 +121,20 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     toast.loading("Preparing purchase...", { id: "buy-nft" });
 
     try {
+      // Contract logic: require(msg.value >= l.priceInEther * 1 ether, "Insufficient ETH");
+      // Since the contract multiplies priceInEther by 1 ether,
+      // priceInEther must be stored as ether units (like 1 = 1 ETH)
+      // But thirdweb might return it as wei, so we need to multiply by 1 ether
+      const valueToSend = nft.priceInEther * BigInt(1e18);
+
+      console.log("NFT Price:", nft.priceInEther.toString());
+      console.log("Value to send:", valueToSend.toString());
+
       const transaction = prepareContractCall({
         contract,
         method: "function buyNFT(uint256 tokenId)",
         params: [nft.tokenId],
-        value: nft.priceInEther,
+        value: valueToSend,
       });
 
       sendTransaction(transaction, {
