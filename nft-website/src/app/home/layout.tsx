@@ -11,7 +11,7 @@ export default function HomeLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
-      <div className="fixed top-10 right-10 z-50">
+      <div className="fixed top-5 right-5 z-50">
         <ModeToggle />
       </div>
       <div className="home-layout">{children}</div>

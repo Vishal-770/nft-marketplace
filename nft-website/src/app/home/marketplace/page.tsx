@@ -51,17 +51,17 @@ export default function Marketplace() {
   );
 
   return (
-    <div className="px-4 py-6 pb-24 bg-[#0a0f18] min-h-screen text-white">
+    <div className="px-4 py-6 pb-24 bg-background min-h-screen text-foreground">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-lg font-semibold">Marketplace</h1>
-        <SlidersHorizontal size={18} className="text-gray-300" />
+        <h1 className="text-lg font-semibold text-foreground">Marketplace</h1>
+        {/* <SlidersHorizontal size={18} className="text-muted-foreground" /> */}
       </div>
 
       {/* Search bar */}
       <div className="relative mb-6">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           size={18}
         />
         <input
@@ -69,19 +69,19 @@ export default function Marketplace() {
           placeholder="Search NFTs"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full bg-gray-800 text-sm rounded-full pl-10 pr-4 py-2 focus:outline-none"
+          className="w-full bg-card border border-border text-sm rounded-full pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
         />
       </div>
 
       {/* Filters */}
       <div className="flex gap-3 mb-6">
-        <button className="bg-gray-800 px-3 py-1 rounded-full text-sm">
+        <button className="bg-muted hover:bg-muted/80 border border-border px-3 py-1 rounded-full text-sm text-foreground transition-colors">
           Category
         </button>
-        <button className="bg-gray-800 px-3 py-1 rounded-full text-sm">
+        <button className="bg-muted hover:bg-muted/80 border border-border px-3 py-1 rounded-full text-sm text-foreground transition-colors">
           Price
         </button>
-        <button className="bg-gray-800 px-3 py-1 rounded-full text-sm">
+        <button className="bg-muted hover:bg-muted/80 border border-border px-3 py-1 rounded-full text-sm text-foreground transition-colors">
           Duration
         </button>
       </div>
@@ -91,8 +91,8 @@ export default function Marketplace() {
         <div className="flex gap-4 overflow-x-auto pb-4">
           {filteredNFTs.map((nft) => (
             <Link key={nft.id} href={`/home/marketplace/${nft.id}`}>
-              <div className="min-w-[120px] flex-shrink-0 cursor-pointer">
-                <div className="w-[120px] h-[120px] rounded-lg overflow-hidden bg-gray-700">
+              <div className="min-w-[120px] flex-shrink-0 cursor-pointer group">
+                <div className="w-[120px] h-[120px] rounded-lg overflow-hidden bg-muted border border-border group-hover:border-ring transition-colors">
                   <Image
                     src="/nftsample.png"
                     alt={nft.name}
@@ -101,14 +101,16 @@ export default function Marketplace() {
                     className="object-cover"
                   />
                 </div>
-                <p className="mt-2 text-xs font-medium truncate">{nft.name}</p>
-                <p className="text-[11px] text-gray-400">{nft.price}</p>
+                <p className="mt-2 text-xs font-medium truncate text-foreground">
+                  {nft.name}
+                </p>
+                <p className="text-[11px] text-muted-foreground">{nft.price}</p>
               </div>
             </Link>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-gray-400">No NFTs found.</p>
+        <p className="text-sm text-muted-foreground">No NFTs found.</p>
       )}
     </div>
   );
