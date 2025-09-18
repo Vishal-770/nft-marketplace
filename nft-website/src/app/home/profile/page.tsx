@@ -3,16 +3,43 @@
 import client from "@/app/client";
 import { contractAddress } from "@/constants";
 import React, { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { getContract } from "thirdweb";
 import { sepolia } from "thirdweb/chains";
-import { useActiveAccount, useReadContract } from "thirdweb/react";
-import { Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import {
-  fetchNFTMetadata,
-  isValidIPFSHash,
-  NFTCard,
-} from "../marketplace/page";
+  useActiveAccount,
+  useReadContract,
+  useSendTransaction,
+} from "thirdweb/react";
+import {
+  Loader2,
+  DollarSign,
+  Calendar,
+  MoreVertical,
+  ShoppingCart,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { prepareContractCall } from "thirdweb";
+import { fetchNFTMetadata, isValidIPFSHash } from "../marketplace/page";
+import { toast } from "sonner";
 
 interface NFTData {
   tokenId: bigint;
@@ -41,6 +68,492 @@ interface NFTWithMetadata extends NFTData {
   metadata?: NFTMetadata | null;
   isLoadingMetadata?: boolean;
 }
+
+// Profile NFT Card Component with listing functionality
+const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
+  const { mutate: sendTransaction } = useSendTransaction();
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageSrc, setImageSrc] = useState(nft.metadata?.image || "");
+
+  // Dialog states
+  const [saleDialogOpen, setSaleDialogOpen] = useState(false);
+  const [rentDialogOpen, setRentDialogOpen] = useState(false);
+  const [isTransacting, setIsTransacting] = useState(false);
+
+  // Form states
+  const [salePrice, setSalePrice] = useState("");
+  const [rentPrice, setRentPrice] = useState("");
+  const [minDays, setMinDays] = useState("");
+  const [maxDays, setMaxDays] = useState("");
+
+  const contract = getContract({
+    chain: sepolia,
+    client: client,
+    address: contractAddress,
+  });
+
+  const formatEther = (wei: bigint): string => {
+    return (Number(wei) / 1e18).toFixed(4);
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoading(false);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+
+  useEffect(() => {
+    if (nft.metadata?.image) {
+      setImageSrc(nft.metadata.image);
+      setImageError(false);
+      setImageLoading(true);
+    }
+  }, [nft.metadata?.image]);
+
+  const resetSaleForm = () => {
+    setSalePrice("");
+    setSaleDialogOpen(false);
+  };
+
+  const resetRentForm = () => {
+    setRentPrice("");
+    setMinDays("");
+    setMaxDays("");
+    setRentDialogOpen(false);
+  };
+
+  const handleListForSale = () => {
+    if (
+      !salePrice ||
+      isNaN(parseFloat(salePrice)) ||
+      parseFloat(salePrice) <= 0
+    ) {
+      toast.error("Please enter a valid sale price");
+      return;
+    }
+
+    setIsTransacting(true);
+    toast.loading("Preparing transaction...", { id: "list-sale" });
+
+    const priceInWei = BigInt(Math.floor(parseFloat(salePrice) * 1e18));
+
+    try {
+      const transaction = prepareContractCall({
+        contract,
+        method:
+          "function listNFTForSale(uint256 tokenId, uint256 priceInEther)",
+        params: [nft.tokenId, priceInWei],
+      });
+
+      sendTransaction(transaction, {
+        onSuccess: (receipt) => {
+          console.log("✅ Sale listing successful:", receipt);
+          toast.success("🎉 NFT listed for sale successfully!", {
+            id: "list-sale",
+          });
+          resetSaleForm();
+          setIsTransacting(false);
+        },
+        onError: (error) => {
+          console.error("❌ Sale listing error:", error);
+          toast.error(`❌ Failed to list for sale: ${error.message}`, {
+            id: "list-sale",
+          });
+          setIsTransacting(false);
+        },
+      });
+    } catch (error) {
+      console.error("🚨 Error preparing sale transaction:", error);
+      toast.error(
+        `Failed to prepare transaction: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        { id: "list-sale" }
+      );
+      setIsTransacting(false);
+    }
+  };
+
+  const handleListForRent = () => {
+    if (
+      !rentPrice ||
+      isNaN(parseFloat(rentPrice)) ||
+      parseFloat(rentPrice) <= 0
+    ) {
+      toast.error("Please enter a valid rental price");
+      return;
+    }
+    if (!minDays || isNaN(parseInt(minDays)) || parseInt(minDays) <= 0) {
+      toast.error("Please enter a valid minimum rental days");
+      return;
+    }
+    if (!maxDays || isNaN(parseInt(maxDays)) || parseInt(maxDays) <= 0) {
+      toast.error("Please enter a valid maximum rental days");
+      return;
+    }
+    if (parseInt(minDays) > parseInt(maxDays)) {
+      toast.error("Minimum days cannot be greater than maximum days");
+      return;
+    }
+
+    setIsTransacting(true);
+    toast.loading("Preparing transaction...", { id: "list-rent" });
+
+    const pricePerDayInWei = BigInt(Math.floor(parseFloat(rentPrice) * 1e18));
+    const minDurationInHours = BigInt(parseInt(minDays) * 24);
+    const maxDurationInHours = BigInt(parseInt(maxDays) * 24);
+
+    try {
+      const transaction = prepareContractCall({
+        contract,
+        method:
+          "function listNFTForRent(uint256 tokenId, uint256 pricePerDayInEther, uint256 minDurationInHours, uint256 maxDurationInHours)",
+        params: [
+          nft.tokenId,
+          pricePerDayInWei,
+          minDurationInHours,
+          maxDurationInHours,
+        ],
+      });
+
+      sendTransaction(transaction, {
+        onSuccess: (receipt) => {
+          console.log("✅ Rent listing successful:", receipt);
+          toast.success("🎉 NFT listed for rent successfully!", {
+            id: "list-rent",
+          });
+          resetRentForm();
+          setIsTransacting(false);
+        },
+        onError: (error) => {
+          console.error("❌ Rent listing error:", error);
+          toast.error(`❌ Failed to list for rent: ${error.message}`, {
+            id: "list-rent",
+          });
+          setIsTransacting(false);
+        },
+      });
+    } catch (error) {
+      console.error("🚨 Error preparing rent transaction:", error);
+      toast.error(
+        `Failed to prepare transaction: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        { id: "list-rent" }
+      );
+      setIsTransacting(false);
+    }
+  };
+
+  const isListed = nft.active && (nft.priceInEther > 0 || nft.forRent);
+
+  return (
+    <Card className="overflow-hidden group hover:shadow-lg transition-all duration-200 border border-border">
+      {/* Image Section */}
+      <div className="relative aspect-square bg-muted/30">
+        {nft.isLoadingMetadata ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : imageSrc && !imageError ? (
+          <>
+            {imageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            )}
+            <Image
+              src={imageSrc}
+              alt={nft.metadata?.name || `NFT #${nft.tokenId}`}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-200"
+              onError={handleImageError}
+              onLoad={handleImageLoad}
+              unoptimized={true}
+            />
+          </>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 mx-auto rounded-lg bg-muted flex items-center justify-center">
+                <span className="text-xs font-medium">NFT</span>
+              </div>
+              <p className="text-sm">
+                {imageError ? "Image Error" : "No Image"}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Token ID Badge */}
+        <div className="absolute top-3 left-3">
+          <Badge variant="secondary" className="text-xs font-mono">
+            #{nft.tokenId.toString()}
+          </Badge>
+        </div>
+
+        {/* Status Badges */}
+        <div className="absolute top-3 right-3 flex flex-col gap-1">
+          {isListed ? (
+            <Badge className="text-xs bg-green-500 hover:bg-green-600">
+              Listed
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs">
+              Unlisted
+            </Badge>
+          )}
+          {nft.forRent && (
+            <Badge variant="outline" className="text-xs">
+              For Rent
+            </Badge>
+          )}
+        </div>
+
+        {/* Action Menu */}
+        {!isListed && (
+          <div className="absolute bottom-3 right-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  disabled={isTransacting}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSaleDialogOpen(true)}>
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  List for Sale
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRentDialogOpen(true)}>
+                  <Calendar className="mr-2 h-4 w-4" />
+                  List for Rent
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
+
+      {/* Content Section */}
+      <div className="p-4 space-y-3">
+        {/* Title and Description */}
+        <div className="space-y-2">
+          <h3 className="font-semibold text-foreground text-lg leading-tight">
+            {nft.metadata?.name || `Unnamed NFT #${nft.tokenId}`}
+          </h3>
+          {nft.metadata?.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {nft.metadata.description}
+            </p>
+          )}
+        </div>
+
+        {/* Current Status */}
+        <div className="space-y-2">
+          {nft.priceInEther > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                Listed Price
+              </span>
+              <div className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {formatEther(nft.priceInEther)} ETH
+                </span>
+              </div>
+            </div>
+          )}
+
+          {nft.forRent && nft.minRentDuration > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                Rent Duration
+              </span>
+              <span className="text-xs">
+                {nft.minRentDuration.toString()}-
+                {nft.maxRentDuration.toString()} hours
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Attributes */}
+        {nft.metadata?.attributes && nft.metadata.attributes.length > 0 && (
+          <div className="pt-2 border-t border-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Traits</span>
+              <Badge variant="outline" className="text-xs">
+                {nft.metadata.attributes.length}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {nft.metadata.attributes.slice(0, 2).map((attr, index) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="text-xs px-2 py-1"
+                >
+                  {attr.trait_type}: {attr.value}
+                </Badge>
+              ))}
+              {nft.metadata.attributes.length > 2 && (
+                <Badge variant="outline" className="text-xs px-2 py-1">
+                  +{nft.metadata.attributes.length - 2} more
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sale Dialog */}
+      <Dialog open={saleDialogOpen} onOpenChange={setSaleDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>List NFT for Sale</DialogTitle>
+            <DialogDescription>
+              Set a price for your NFT. Once listed, buyers can purchase it
+              immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="salePrice" className="text-right">
+                Price (ETH)
+              </Label>
+              <Input
+                id="salePrice"
+                type="number"
+                step="0.001"
+                min="0"
+                placeholder="0.1"
+                value={salePrice}
+                onChange={(e) => setSalePrice(e.target.value)}
+                className="col-span-3"
+                disabled={isTransacting}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={resetSaleForm}
+              disabled={isTransacting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleListForSale}
+              disabled={isTransacting || !salePrice}
+            >
+              {isTransacting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Listing...
+                </>
+              ) : (
+                "List for Sale"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rent Dialog */}
+      <Dialog open={rentDialogOpen} onOpenChange={setRentDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>List NFT for Rent</DialogTitle>
+            <DialogDescription>
+              Set rental terms for your NFT. Renters can use it for the
+              specified duration.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="rentPrice" className="text-right">
+                Price/Day (ETH)
+              </Label>
+              <Input
+                id="rentPrice"
+                type="number"
+                step="0.001"
+                min="0"
+                placeholder="0.01"
+                value={rentPrice}
+                onChange={(e) => setRentPrice(e.target.value)}
+                className="col-span-3"
+                disabled={isTransacting}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="minDays" className="text-right">
+                Min Days
+              </Label>
+              <Input
+                id="minDays"
+                type="number"
+                min="1"
+                placeholder="1"
+                value={minDays}
+                onChange={(e) => setMinDays(e.target.value)}
+                className="col-span-3"
+                disabled={isTransacting}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="maxDays" className="text-right">
+                Max Days
+              </Label>
+              <Input
+                id="maxDays"
+                type="number"
+                min="1"
+                placeholder="30"
+                value={maxDays}
+                onChange={(e) => setMaxDays(e.target.value)}
+                className="col-span-3"
+                disabled={isTransacting}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={resetRentForm}
+              disabled={isTransacting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleListForRent}
+              disabled={isTransacting || !rentPrice || !minDays || !maxDays}
+            >
+              {isTransacting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Listing...
+                </>
+              ) : (
+                "List for Rent"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+};
 
 const ProfilePage = () => {
   const account = useActiveAccount();
@@ -179,7 +692,7 @@ const ProfilePage = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {nftsWithMetadata.map((nft) => (
-                <NFTCard key={nft.tokenId.toString()} nft={nft} />
+                <ProfileNFTCard key={nft.tokenId.toString()} nft={nft} />
               ))}
             </div>
           </>
