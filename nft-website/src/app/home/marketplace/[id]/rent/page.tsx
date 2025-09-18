@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 export default function ConfirmRental() {
   const router = useRouter();
   return (
-    <div className="bg-background min-h-screen text-foreground px-4 py-6">
+    <div className="bg-background min-h-screen text-foreground px-4 py-6 mb-15">
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
         <ArrowLeft

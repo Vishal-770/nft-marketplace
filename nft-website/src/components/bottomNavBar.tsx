@@ -6,6 +6,7 @@ import {
   User,
   ShoppingCart,
   Clock,
+  Wallet,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -27,8 +28,8 @@ export default function BottomNav() {
         }`}
         onClick={() => handleNav("/home/marketplace", "marketplace")}
       >
-        <Home size={20} />
-        <span className="text-xs">Marketplace</span>
+        <Home size={18} />
+        <span className="text-xs">Market</span>
       </div>
 
       {/* Create NFT */}
@@ -38,7 +39,7 @@ export default function BottomNav() {
         }`}
         onClick={() => handleNav("/home/create", "create")}
       >
-        <ImageIcon size={20} />
+        <ImageIcon size={18} />
         <span className="text-xs">Create</span>
       </div>
 
@@ -49,8 +50,8 @@ export default function BottomNav() {
         }`}
         onClick={() => handleNav("/home/buy", "buy")}
       >
-        <ShoppingCart size={20} />
-        <span className="text-xs">Buy/Sell</span>
+        <ShoppingCart size={18} />
+        <span className="text-xs">Buy</span>
       </div>
 
       {/* Rent */}
@@ -60,8 +61,19 @@ export default function BottomNav() {
         }`}
         onClick={() => handleNav("/home/rent", "rent")}
       >
-        <Clock size={20} />
+        <Clock size={18} />
         <span className="text-xs">Rent</span>
+      </div>
+
+      {/* Wallet */}
+      <div
+        className={`flex flex-col items-center cursor-pointer ${
+          active === "wallet" ? "text-primary" : "text-muted-foreground"
+        }`}
+        onClick={() => handleNav("/home/wallet", "wallet")}
+      >
+        <Wallet size={18} />
+        <span className="text-xs">Wallet</span>
       </div>
 
       {/* Profile */}
@@ -71,7 +83,7 @@ export default function BottomNav() {
         }`}
         onClick={() => handleNav("/home/profile", "profile")}
       >
-        <User size={20} />
+        <User size={18} />
         <span className="text-xs">My NFTs</span>
       </div>
     </div>

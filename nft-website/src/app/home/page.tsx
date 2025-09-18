@@ -5,12 +5,11 @@ import client from "../client";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 
-
 export default function HomePage() {
   const { theme } = useTheme();
- 
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center pb-20">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center pb-20 mb-15">
       {theme === "light" && (
         <div className="mt-10">
           <Image src="/logo.png" alt="NFT Rentals" width={200} height={200} />
