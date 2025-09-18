@@ -68,6 +68,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
 
   // Dialog states
   const [rentDialogOpen, setRentDialogOpen] = useState(false);
+  const [buyDialogOpen, setBuyDialogOpen] = useState(false);
   const [rentDays, setRentDays] = useState("");
 
   const contract = getContract({
@@ -106,6 +107,49 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
   const resetRentForm = () => {
     setRentDays("");
     setRentDialogOpen(false);
+  };
+
+  const resetBuyForm = () => {
+    setBuyDialogOpen(false);
+  };
+
+  const handleBuyNFT = () => {
+    setIsTransacting(true);
+    toast.loading("Preparing purchase...", { id: "buy-nft" });
+
+    try {
+      const transaction = prepareContractCall({
+        contract,
+        method: "function buyNFT(uint256 tokenId) payable",
+        params: [nft.tokenId],
+        value: nft.priceInEther,
+      });
+
+      sendTransaction(transaction, {
+        onSuccess: (receipt) => {
+          console.log("✅ Purchase successful:", receipt);
+          toast.success("🎉 NFT purchased successfully!", { id: "buy-nft" });
+          resetBuyForm();
+          setIsTransacting(false);
+        },
+        onError: (error) => {
+          console.error("❌ Purchase error:", error);
+          toast.error(`❌ Purchase failed: ${error.message}`, {
+            id: "buy-nft",
+          });
+          setIsTransacting(false);
+        },
+      });
+    } catch (error) {
+      console.error("🚨 Error preparing purchase:", error);
+      toast.error(
+        `Failed to prepare transaction: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        { id: "buy-nft" }
+      );
+      setIsTransacting(false);
+    }
   };
 
   const handleRentNFT = () => {
@@ -288,22 +332,33 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
           </div>
         )}
 
-        {/* Rent Button */}
-        <div className="pt-2">
+        {/* Action Buttons */}
+        <div className="pt-2 space-y-2">
           {isOwner ? (
             <Button className="w-full" disabled>
               <Calendar className="mr-2 h-4 w-4" />
               Your NFT
             </Button>
           ) : (
-            <Button
-              className="w-full"
-              onClick={() => setRentDialogOpen(true)}
-              disabled={isTransacting || !account}
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Rent NFT
-            </Button>
+            <>
+              <Button
+                className="w-full"
+                onClick={() => setBuyDialogOpen(true)}
+                disabled={isTransacting || !account}
+              >
+                <DollarSign className="mr-2 h-4 w-4" />
+                Buy for {formatEther(nft.priceInEther)} ETH
+              </Button>
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => setRentDialogOpen(true)}
+                disabled={isTransacting || !account}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Rent NFT
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -314,8 +369,8 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
           <DialogHeader>
             <DialogTitle>Rent NFT</DialogTitle>
             <DialogDescription>
-              Choose how many hours you want to rent this NFT. Duration must be
-              between {minDays} and {maxDays} hours.
+              Choose how many days you want to rent this NFT. Duration must be
+              between {minDays} and {maxDays} days.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -347,7 +402,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
                 </div>
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-xs text-muted-foreground">
-                    {rentDays} hours× {formatEther(nft.priceInEther)} ETH/day
+                    {rentDays} days × {formatEther(nft.priceInEther)} ETH/day
                   </span>
                 </div>
               </div>
@@ -374,6 +429,66 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
                 <>
                   <Calendar className="mr-2 h-4 w-4" />
                   Rent for {formatEther(totalCost)} ETH
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Buy Dialog */}
+      <Dialog open={buyDialogOpen} onOpenChange={setBuyDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Buy NFT</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to purchase this NFT? This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="bg-muted p-4 rounded-lg space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">NFT:</span>
+                <span className="font-medium">
+                  {nft.metadata?.name || `NFT #${nft.tokenId}`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Price:</span>
+                <div className="flex items-center gap-1">
+                  <DollarSign className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-lg font-bold">
+                    {formatEther(nft.priceInEther)} ETH
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Seller:</span>
+                <span className="text-sm font-mono">
+                  {nft.seller.slice(0, 6)}...{nft.seller.slice(-4)}
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={resetBuyForm}
+              disabled={isTransacting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleBuyNFT} disabled={isTransacting}>
+              {isTransacting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Purchasing...
+                </>
+              ) : (
+                <>
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  Buy for {formatEther(nft.priceInEther)} ETH
                 </>
               )}
             </Button>
