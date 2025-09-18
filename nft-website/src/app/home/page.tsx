@@ -4,13 +4,11 @@ import { ConnectButton } from "thirdweb/react";
 import client from "../client";
 import Image from "next/image";
 import { useTheme } from "next-themes";
-import { useEffect } from "react";
+
 
 export default function HomePage() {
   const { theme } = useTheme();
-  useEffect(() => {
-    console.log("Current theme:", theme);
-  }, [theme]);
+ 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center pb-20">
       {theme === "light" && (
