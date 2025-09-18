@@ -189,15 +189,15 @@ const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
       return;
     }
     if (!minDays || isNaN(parseInt(minDays)) || parseInt(minDays) <= 0) {
-      toast.error("Please enter a valid minimum rental days");
+      toast.error("Please enter a valid minimum rental hours");
       return;
     }
     if (!maxDays || isNaN(parseInt(maxDays)) || parseInt(maxDays) <= 0) {
-      toast.error("Please enter a valid maximum rental days");
+      toast.error("Please enter a valid maximum rental hours");
       return;
     }
     if (parseInt(minDays) > parseInt(maxDays)) {
-      toast.error("Minimum days cannot be greater than maximum days");
+      toast.error("Minimum hours cannot be greater than maximum hours");
       return;
     }
 
@@ -498,7 +498,7 @@ const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="minDays" className="text-right">
-                Min Days
+                Min hours
               </Label>
               <Input
                 id="minDays"
@@ -513,7 +513,7 @@ const ProfileNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="maxDays" className="text-right">
-                Max Days
+                Max hours
               </Label>
               <Input
                 id="maxDays"

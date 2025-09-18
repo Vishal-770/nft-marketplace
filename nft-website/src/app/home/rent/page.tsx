@@ -314,8 +314,8 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
           <DialogHeader>
             <DialogTitle>Rent NFT</DialogTitle>
             <DialogDescription>
-              Choose how many days you want to rent this NFT. Duration must be
-              between {minDays} and {maxDays} days.
+              Choose how many hours you want to rent this NFT. Duration must be
+              between {minDays} and {maxDays} hours.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -347,7 +347,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
                 </div>
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-xs text-muted-foreground">
-                    {rentDays} days × {formatEther(nft.priceInEther)} ETH/day
+                    {rentDays} hours× {formatEther(nft.priceInEther)} ETH/day
                   </span>
                 </div>
               </div>

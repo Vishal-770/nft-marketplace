@@ -15,6 +15,14 @@ import { Loader2, DollarSign, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { prepareContractCall } from "thirdweb";
 import { fetchNFTMetadata, isValidIPFSHash } from "../marketplace/page";
 import { toast } from "sonner";
@@ -55,6 +63,7 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageSrc, setImageSrc] = useState(nft.metadata?.image || "");
   const [isTransacting, setIsTransacting] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const contract = getContract({
     chain: sepolia,
@@ -84,7 +93,7 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
     }
   }, [nft.metadata?.image]);
 
-  const handleBuyNFT = () => {
+  const handleBuyClick = () => {
     if (!account?.address) {
       toast.error("Please connect your wallet first");
       return;
@@ -95,6 +104,11 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
       return;
     }
 
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmBuy = () => {
+    setShowConfirmDialog(false);
     setIsTransacting(true);
     toast.loading("Preparing purchase...", { id: "buy-nft" });
 
@@ -247,23 +261,114 @@ const BuyNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
               Your NFT
             </Button>
           ) : (
-            <Button
-              className="w-full"
-              onClick={handleBuyNFT}
-              disabled={isTransacting || !account}
-            >
-              {isTransacting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Purchasing...
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  Buy for {formatEther(nft.priceInEther)} ETH
-                </>
-              )}
-            </Button>
+            <>
+              <Button
+                className="w-full"
+                onClick={handleBuyClick}
+                disabled={isTransacting || !account}
+              >
+                {isTransacting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Purchasing...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Buy for {formatEther(nft.priceInEther)} ETH
+                  </>
+                )}
+              </Button>
+
+              {/* Confirmation Dialog */}
+              <Dialog
+                open={showConfirmDialog}
+                onOpenChange={setShowConfirmDialog}
+              >
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Confirm NFT Purchase</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to purchase this NFT?
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4">
+                    {/* NFT Preview */}
+                    <div className="flex items-center space-x-4 p-4 bg-muted/30 rounded-lg">
+                      <div className="relative w-16 h-16 bg-muted rounded-md overflow-hidden">
+                        {imageSrc && !imageError ? (
+                          <Image
+                            src={imageSrc}
+                            alt={nft.metadata?.name || `NFT #${nft.tokenId}`}
+                            fill
+                            className="object-cover"
+                            unoptimized={true}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs">
+                            NFT
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium">
+                          {nft.metadata?.name || `Unnamed NFT #${nft.tokenId}`}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          Token ID: #{nft.tokenId.toString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Transaction Details */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Price:
+                        </span>
+                        <span className="font-medium">
+                          {formatEther(nft.priceInEther)} ETH
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Seller:
+                        </span>
+                        <span className="font-mono text-sm">
+                          {nft.seller.slice(0, 6)}...{nft.seller.slice(-4)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground bg-yellow-50 dark:bg-yellow-950/30 p-3 rounded-md border border-yellow-200 dark:border-yellow-800">
+                      ⚠️ This transaction cannot be undone. Make sure you want
+                      to purchase this NFT before confirming.
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowConfirmDialog(false)}
+                      disabled={isTransacting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleConfirmBuy} disabled={isTransacting}>
+                      {isTransacting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Purchasing...
+                        </>
+                      ) : (
+                        <>Confirm Purchase</>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </>
           )}
         </div>
       </div>
