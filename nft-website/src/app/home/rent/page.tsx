@@ -66,7 +66,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
 
   // Dialog states
   const [rentDialogOpen, setRentDialogOpen] = useState(false);
-  const [rentDays, setRentDays] = useState("");
+  const [rentHours, setRentHours] = useState("");
 
   const contract = getContract({
     chain: sepolia,
@@ -84,8 +84,14 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
   };
 
   const formatDuration = (hours: bigint): string => {
-    const days = Number(hours) / 24;
-    return days === 1 ? "1 day" : `${days} days`;
+    const numHours = Number(hours);
+
+    // Since blockchain data is already in hours, just display hours directly
+    if (numHours === 1) {
+      return "1 hour";
+    } else {
+      return `${numHours} hours`;
+    }
   };
 
   const handleImageError = () => {
@@ -107,15 +113,15 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
   }, [nft.metadata?.image]);
 
   const resetRentForm = () => {
-    setRentDays("");
+    setRentHours("");
     setRentDialogOpen(false);
   };
 
   const isOwner = account?.address?.toLowerCase() === nft.seller.toLowerCase();
-  const minDays = Number(nft.minRentDuration) / 24;
-  const maxDays = Number(nft.maxRentDuration) / 24;
-  const totalCost = rentDays
-    ? (nft.priceInEther * BigInt(parseInt(rentDays) * 24)) / BigInt(24)
+  const minHours = Number(nft.minRentDuration);
+  const maxHours = Number(nft.maxRentDuration);
+  const totalCost = rentHours
+    ? (nft.priceInEther * BigInt(parseInt(rentHours))) / BigInt(24)
     : BigInt(0);
 
   return (
@@ -198,7 +204,9 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Duration</span>
+            <span className="text-sm text-muted-foreground">
+              Duration Range
+            </span>
             <div className="flex items-center gap-1">
               <Clock className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">
@@ -262,28 +270,27 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
           <DialogHeader>
             <DialogTitle>Rent NFT</DialogTitle>
             <DialogDescription>
-              Choose how many days you want to rent this NFT. Duration must be
-              between {minDays} and {maxDays} days.
+              Choose how many hours you want to rent this NFT. Duration must be
+              between {minHours} and {maxHours} hours.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="rentDays" className="text-right">
-                Days
+              <Label htmlFor="rentHours" className="text-right">
+                Hours
               </Label>
               <Input
-                id="rentDays"
+                id="rentHours"
                 type="number"
-                min={minDays}
-                max={maxDays}
-                placeholder={`${minDays}`}
-                value={rentDays}
-                onChange={(e) => setRentDays(e.target.value)}
+                min={minHours}
+                max={maxHours}
+                placeholder={`Min: ${minHours} hours`}
+                value={rentHours}
+                onChange={(e) => setRentHours(e.target.value)}
                 className="col-span-3"
-                disabled={rentDays && parseInt(rentDays) > 0 ? false : true}
               />
             </div>
-            {rentDays && !isNaN(parseInt(rentDays)) && (
+            {rentHours && !isNaN(parseInt(rentHours)) && (
               <div className="bg-muted p-3 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">
@@ -295,7 +302,8 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
                 </div>
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-xs text-muted-foreground">
-                    {rentDays} days × {formatWei(nft.priceInEther)} WEI/day
+                    {rentHours} hours × ({formatWei(nft.priceInEther)} WEI/day ÷
+                    24 hours)
                   </span>
                 </div>
               </div>
@@ -309,32 +317,34 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
             <TransactionButton
               transaction={() => {
                 if (
-                  !rentDays ||
-                  isNaN(parseInt(rentDays)) ||
-                  parseInt(rentDays) <= 0
+                  !rentHours ||
+                  isNaN(parseInt(rentHours)) ||
+                  parseInt(rentHours) <= 0
                 ) {
-                  throw new Error("Please enter a valid rental duration");
-                }
-
-                const days = parseInt(rentDays);
-                const minDays = Number(nft.minRentDuration) / 24;
-                const maxDays = Number(nft.maxRentDuration) / 24;
-
-                if (days < minDays || days > maxDays) {
                   throw new Error(
-                    `Rental duration must be between ${minDays} and ${maxDays} days`
+                    "Please enter a valid rental duration in hours"
                   );
                 }
 
-                const durationInHours = BigInt(days * 24);
-                // Since priceInEther is now stored in wei, we calculate directly
+                const hours = parseInt(rentHours);
+                const minHours = Number(nft.minRentDuration);
+                const maxHours = Number(nft.maxRentDuration);
+
+                if (hours < minHours || hours > maxHours) {
+                  throw new Error(
+                    `Rental duration must be between ${minHours} and ${maxHours} hours`
+                  );
+                }
+
+                const durationInHours = BigInt(hours);
+                // Calculate cost: (price per day / 24) * hours
                 const totalCostInWei =
                   (nft.priceInEther * durationInHours) / BigInt(24);
 
                 return prepareContractCall({
                   contract,
                   method:
-                    "function rentNFT(uint256 tokenId, uint256 durationInHours)",
+                    "function rentNFT(uint256 tokenId, uint256 durationInHours) payable",
                   params: [nft.tokenId, durationInHours],
                   value: totalCostInWei,
                 });
@@ -346,7 +356,7 @@ const RentNFTCard: React.FC<{ nft: NFTWithMetadata }> = ({ nft }) => {
               onError={(error) => {
                 toast.error(`❌ Rental failed: ${error.message}`);
               }}
-              disabled={!rentDays}
+              disabled={!rentHours}
             >
               <Calendar className="mr-2 h-4 w-4" />
               Rent for {formatWei(totalCost)} WEI
