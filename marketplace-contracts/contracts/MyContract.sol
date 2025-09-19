@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 contract NFTMarketplace is ERC721, IERC2981, Ownable {
     using Counters for Counters.Counter;
@@ -20,18 +21,19 @@ contract NFTMarketplace is ERC721, IERC2981, Ownable {
     struct Listing {
         uint256 tokenId;
         address seller;
-        uint256 priceInEther; // actually stored in wei
+        uint256 priceInEther; // stored in wei (price or pricePerDay)
         bool forRent;
-        uint256 minRentDuration; 
+        uint256 minRentDuration;
         uint256 maxRentDuration;
-        uint256 rentEnd;         
+        uint256 rentEnd;
         address renter;
         bool active;
-        string tokenURI;         
+        string tokenURI;
     }
 
     mapping(uint256 => Listing) public listings;
-    mapping(uint256 => uint256) public tokenRoyalty; // basis points
+    mapping(uint256 => uint256) public tokenRoyalty; // basis points (10000 = 100%)
+    mapping(uint256 => address) public creators;     // original minter / royalty receiver
     mapping(address => uint256) public pendingWithdrawals;
     mapping(uint256 => NFTStatus) public nftStatus;
 
@@ -47,6 +49,8 @@ contract NFTMarketplace is ERC721, IERC2981, Ownable {
         uint256 tokenId = _tokenIds.current();
 
         _mint(msg.sender, tokenId);
+
+        creators[tokenId] = msg.sender;
         tokenRoyalty[tokenId] = royaltyPercent;
         nftStatus[tokenId] = NFTStatus.Owned;
 
@@ -73,14 +77,15 @@ contract NFTMarketplace is ERC721, IERC2981, Ownable {
     }
 
     // ================== ROYALTY ==================
-    function royaltyInfo(uint256 tokenId, uint256 salePrice) 
-        external 
-        view 
-        override 
-        returns (address, uint256) 
+    function royaltyInfo(uint256 tokenId, uint256 salePrice)
+        external
+        view
+        override
+        returns (address, uint256)
     {
         uint256 royaltyAmount = (salePrice * tokenRoyalty[tokenId]) / 10000;
-        return (ownerOf(tokenId), royaltyAmount);
+        address receiver = creators[tokenId] == address(0) ? ownerOf(tokenId) : creators[tokenId];
+        return (receiver, royaltyAmount);
     }
 
     // ================== LISTING ==================
@@ -96,9 +101,9 @@ contract NFTMarketplace is ERC721, IERC2981, Ownable {
     }
 
     function listNFTForRent(
-        uint256 tokenId, 
-        uint256 pricePerDayInWei, 
-        uint256 minDurationInHours, 
+        uint256 tokenId,
+        uint256 pricePerDayInWei,
+        uint256 minDurationInHours,
         uint256 maxDurationInHours
     ) external {
         require(ownerOf(tokenId) == msg.sender, "Not owner");
@@ -121,63 +126,108 @@ contract NFTMarketplace is ERC721, IERC2981, Ownable {
         require(msg.sender != l.seller, "Cannot buy own NFT");
         require(msg.value >= l.priceInEther, "Insufficient ETH");
 
+        // Prevent buying while rented (shouldn't be possible as forRent==false, but defensive)
+        require(nftStatus[tokenId] != NFTStatus.Rented, "Currently rented");
+
         uint256 price = l.priceInEther;
         uint256 royalty = (price * tokenRoyalty[tokenId]) / 10000;
         uint256 fee = (price * platformFeePercent) / 1000;
 
-        pendingWithdrawals[l.seller] += (price - royalty - fee);
-        pendingWithdrawals[marketplaceOwner] += (royalty + fee);
+        uint256 sellerAmount = price >= royalty + fee ? price - royalty - fee : 0;
 
+        pendingWithdrawals[l.seller] += sellerAmount;
+
+        address royaltyReceiver = creators[tokenId] == address(0) ? l.seller : creators[tokenId];
+        if (royalty > 0) {
+            pendingWithdrawals[royaltyReceiver] += royalty;
+        }
+
+        if (fee > 0) {
+            pendingWithdrawals[marketplaceOwner] += fee;
+        }
+
+        // Transfer NFT ownership to buyer
         _transfer(l.seller, msg.sender, tokenId);
 
+        // deactivate listing & update state
         l.active = false;
         l.forRent = false;
         l.renter = address(0);
         l.rentEnd = 0;
-        l.seller = msg.sender; 
+        l.seller = msg.sender;
         nftStatus[tokenId] = NFTStatus.Owned;
 
+        // refund extra
         if (msg.value > price) {
             payable(msg.sender).transfer(msg.value - price);
         }
     }
 
     // ================== RENT ==================
+    /**
+     * NOTE: Renting DOES NOT transfer token ownership. The token stays owned by 'seller'.
+     * The contract records 'renter' and 'rentEnd' so the frontend / off-chain code can
+     * give the renter access. This prevents the owner from accidentally losing the token
+     * and avoids the "owner changed" bug you reported.
+     */
     function rentNFT(uint256 tokenId, uint256 durationInHours) external payable {
         Listing storage l = listings[tokenId];
         require(l.active && l.forRent, "NFT not for rent");
         require(msg.sender != l.seller, "Owner cannot rent");
         require(durationInHours >= l.minRentDuration && durationInHours <= l.maxRentDuration, "Invalid duration");
+        require(nftStatus[tokenId] == NFTStatus.ForRent, "NFT not available for rent");
 
         uint256 totalPrice = (l.priceInEther * durationInHours) / 24;
         require(msg.value >= totalPrice, "Insufficient ETH");
 
         uint256 royalty = (totalPrice * tokenRoyalty[tokenId]) / 10000;
         uint256 fee = (totalPrice * platformFeePercent) / 1000;
+        uint256 sellerAmount = totalPrice >= royalty + fee ? totalPrice - royalty - fee : 0;
 
-        pendingWithdrawals[l.seller] += (totalPrice - royalty - fee);
-        pendingWithdrawals[marketplaceOwner] += (royalty + fee);
+        // record money
+        pendingWithdrawals[l.seller] += sellerAmount;
 
-        _transfer(l.seller, msg.sender, tokenId);
+        address royaltyReceiver = creators[tokenId] == address(0) ? l.seller : creators[tokenId];
+        if (royalty > 0) {
+            pendingWithdrawals[royaltyReceiver] += royalty;
+        }
 
+        if (fee > 0) {
+            pendingWithdrawals[marketplaceOwner] += fee;
+        }
+
+        // IMPORTANT: DO NOT transfer token ownership to renter.
+        // Instead set renter and rentEnd so off-chain systems know renter has access.
         l.renter = msg.sender;
         l.rentEnd = block.timestamp + (durationInHours * 1 hours);
+
+        // mark listing inactive while rented so it won't appear in lists
+        l.active = false;
         nftStatus[tokenId] = NFTStatus.Rented;
 
+        // refund excess
         if (msg.value > totalPrice) {
             payable(msg.sender).transfer(msg.value - totalPrice);
         }
     }
 
+    /**
+     * End rental — anyone can call after rental period
+     * This function simply clears the renter and returns status to Owned.
+     * No transfers are made because ownership was never changed on rent.
+     */
     function endRental(uint256 tokenId) external {
         Listing storage l = listings[tokenId];
         require(l.renter != address(0), "Not rented");
         require(block.timestamp >= l.rentEnd, "Rental ongoing");
 
-        _transfer(l.renter, l.seller, tokenId);
-
+        // clear rental info
         l.renter = address(0);
         l.rentEnd = 0;
+
+        // do not auto-relist — owner should relist if desired
+        l.active = false;
+        l.forRent = false;
         nftStatus[tokenId] = NFTStatus.Owned;
     }
 
@@ -281,5 +331,40 @@ contract NFTMarketplace is ERC721, IERC2981, Ownable {
             result[i - 1] = listings[i];
         }
         return result;
+    }
+
+    // ================== INTERFACE OVERRIDES & TRANSFER HOOK ==================
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, IERC165) returns (bool) {
+        return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    /**
+     * Prevent transfers while token is rented.
+     * Also clear listing.active and forRent on transfers (owner changed).
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 batchSize
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+
+        // If token is rented, disallow transfers (owner retains ownership during rent)
+        if (nftStatus[tokenId] == NFTStatus.Rented) {
+            // allow mint (from == address(0)) and burn (to == address(0)), but not transfers between accounts
+            require(from == address(0) || to == address(0), "Token is rented");
+        }
+
+        // Only for normal transfers (not mint/burn) clear listing state and update seller
+        if (from != address(0) && to != address(0)) {
+            listings[tokenId].active = false;
+            listings[tokenId].forRent = false;
+            listings[tokenId].renter = address(0);
+            listings[tokenId].rentEnd = 0;
+
+            listings[tokenId].seller = to;
+            nftStatus[tokenId] = NFTStatus.Owned;
+        }
     }
 }

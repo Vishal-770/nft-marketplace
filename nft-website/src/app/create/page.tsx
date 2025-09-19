@@ -7,7 +7,7 @@ import client from "../client";
 
 import { toast } from "sonner";
 
-export default function Component() {
+export default function Component() { 
   const contract = getContract({
     client: client,
     address: contractAddress,
